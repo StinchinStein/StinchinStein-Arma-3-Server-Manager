@@ -19,14 +19,12 @@ import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.text.Position;
 
 import org.apache.commons.io.FileUtils;
 import org.json.simple.JSONObject;
@@ -48,6 +46,9 @@ public class A3WorkshopWindow extends JFrame {
 	private ArrayList<String> WORKSHOP_SELECTED = new ArrayList<String>();
 	private JTextField textField;
 	private DecimalFormat df = new DecimalFormat("#,###.#");
+	
+	private ArrayList<ArmaMod> CACHE = new ArrayList<ArmaMod>();
+	
 	
 	class CopyFilesThread extends Thread {
 		public void run() {
@@ -209,6 +210,11 @@ public class A3WorkshopWindow extends JFrame {
 			contentPane.add(btnAll);
 			
 			JButton btnRefreshMods = new JButton("Refresh Mods");
+			btnRefreshMods.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent arg0) {
+					reloadModDir();
+				}
+			});
 			btnRefreshMods.setBounds(480, 229, 100, 23);
 			contentPane.add(btnRefreshMods);
 			
@@ -266,7 +272,8 @@ public class A3WorkshopWindow extends JFrame {
 			setVisible(true);
 
 			if(parent.WORKSHOP_MODS_DIR.length() > 0) {
-				refreshModList();
+				//refreshModList();
+				reloadModDir();
 			}
 		} catch(Exception e) {
 			e.printStackTrace();
@@ -285,12 +292,11 @@ public class A3WorkshopWindow extends JFrame {
 		}
 		list.repaint();
 	}
-
-	private void refreshModList(String filter) {
-		getModel().clear();
+	
+	public void reloadModDir() {
 		File[] fileList = new File(parent.WORKSHOP_MODS_DIR).listFiles();
 		for(File f : fileList) {
-			if((f.getName().contains("@") && f.getName().toLowerCase().contains(filter.toLowerCase())) || (f.getName().contains("@") && filter == "")) {
+			if(f.getName().contains("@")) {
 				try {
 					JSONObject obj = ArmaCFGParser.parse(new File(f.getAbsolutePath() + File.separator + "mod.cpp"));
 					if(obj.get("name") != null) {
@@ -300,7 +306,7 @@ public class A3WorkshopWindow extends JFrame {
 						} else {
 							aMod.fileSize = df.format((getFileFolderSize(new File(f.getAbsolutePath() + File.separator)) / 1024f) / 1024f) + "MB";
 						}
-						getModel().addElement(aMod);
+						CACHE.add(aMod);
 					} else {
 						ArmaMod aMod = new ArmaMod(f.getName(), f.getName());
 						if((getFileFolderSize(new File(f.getAbsolutePath() + File.separator)) / 1024f) / 1024f > 1024) {
@@ -308,11 +314,22 @@ public class A3WorkshopWindow extends JFrame {
 						} else {
 							aMod.fileSize = df.format((getFileFolderSize(new File(f.getAbsolutePath() + File.separator)) / 1024f) / 1024f) + "MB";
 						}
-						getModel().addElement(aMod);
+						CACHE.add(aMod);
 					}
 				} catch(Exception e) {}
 			}
 		}
+		refreshModList();
+	}
+	private void refreshModList(String filter) {
+		getModel().clear();
+		for(ArmaMod mod: CACHE) {
+			if(mod.folderName.toLowerCase().contains(filter.toLowerCase())) {
+				getModel().addElement(mod);
+			}
+		}
+		
+		
 		list.setModel(getModel());
 		//.setText("Mods (" + getModel().size() + " total | " + modList.size() + " enabled)");
 	}

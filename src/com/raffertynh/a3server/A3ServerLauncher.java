@@ -67,7 +67,7 @@ public class A3ServerLauncher extends JFrame {
 						.build();
 				DiscordRPC.discordUpdatePresence(rich);
 				SERVER_RUNNING = true;
-				processA3Server = Runtime.getRuntime().exec(INSTALL_DIR + "\\arma3server.exe -name=A3Server -world=altis -config=CONFIG_server.cfg " + MODS_PARAM);
+				processA3Server = Runtime.getRuntime().exec(INSTALL_DIR + "\\arma3server_x64.exe -name=A3Server -world=altis -config=CONFIG_server.cfg " + MODS_PARAM);
 				//System.out.println(INSTALL_DIR + "\\arma3server.exe -profiles=F:\\SteamLibrary\\steamapps\\common\\Arma 3 Server\\Users -name=server -world=altis -config=CONFIG_server.cfg " + MODS_PARAM);
 				while(processA3Server.isAlive()) {}
 				steamCMDConsole.append("Stopped Arma 3 Server.\n");
