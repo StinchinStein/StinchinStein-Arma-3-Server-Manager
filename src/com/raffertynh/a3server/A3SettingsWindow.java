@@ -30,7 +30,7 @@ import java.awt.Color;
 import java.awt.Rectangle;
 import javax.swing.JTextField;
 
-public class A3SettingsWindow extends JFrame {
+public class A3SettingsWindow extends JFrame implements IArmaWindow {
 
 	private JPanel contentPane;
 	public JSONObject obj = new JSONObject();
@@ -141,6 +141,10 @@ public class A3SettingsWindow extends JFrame {
 			e.printStackTrace();
 		}
 	
+	}
+	@Override
+	public void onCacheLoaded() {
+		
 	}
 
 }

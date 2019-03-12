@@ -3,22 +3,19 @@ package com.raffertynh.a3server;
 import java.awt.Desktop;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
-import javax.swing.ListSelectionModel;
-import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
@@ -27,12 +24,10 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
 import com.raffertynh.renderer.ArmaMod;
-import com.raffertynh.renderer.InventoryRenderer;
 
 import net.arikia.dev.drpc.DiscordEventHandlers;
 import net.arikia.dev.drpc.DiscordRPC;
 import net.arikia.dev.drpc.DiscordRichPresence;
-import javax.swing.JProgressBar;
 
 public class A3ServerLauncher extends JFrame {
 
@@ -51,7 +46,16 @@ public class A3ServerLauncher extends JFrame {
 	public JTextArea steamCMDConsole;
 	private JButton btnModManager;
 	
+	A3WorkshopWindow winWorkshop;
+	
 	public boolean SERVER_RUNNING = false;
+	
+	public ArrayList<ArmaMod> CACHE_WORKSHOP = new ArrayList<ArmaMod>();
+	public ArrayList<ArmaMod> CACHE_MODLIST = new ArrayList<ArmaMod>();
+	
+	public static DecimalFormat df = new DecimalFormat("#,###.#");
+	
+	public boolean CACHE_FINISHED = false;
 	
 	public static void main(String[] args) {
 		new A3ServerLauncher();
@@ -222,6 +226,23 @@ public class A3ServerLauncher extends JFrame {
 		setTitle("StinchinStein's A3 Server Manager");
 		setVisible(true);
 
+		
+		//cache thread
+		new Thread(new Runnable() {
+			public void run() {
+				System.out.println("Caching Install Directory");
+				reloadModDir(CACHE_MODLIST, INSTALL_DIR);
+				System.out.println("Caching Workshop Directory");
+				reloadModDir(CACHE_WORKSHOP, WORKSHOP_MODS_DIR);
+				winWorkshop.onCacheLoaded();
+				CACHE_FINISHED = true;
+				System.out.println("Caching Finished");
+			}
+		}).start();
+		
+		//load windows
+		winWorkshop = new A3WorkshopWindow(instance);
+		
 		DiscordEventHandlers handlers = new DiscordEventHandlers.Builder().setReadyEventHandler((user) -> {
 			System.out.println("Welcome " + user.username + "#" + user.discriminator + "!");
 		}).build();
@@ -234,21 +255,7 @@ public class A3ServerLauncher extends JFrame {
 		DiscordRPC.discordUpdatePresence(rich);
 	}
 	
-	private void openWorkshop() {
-		if(WORKSHOP_MODS_DIR.length() > 0) {
-			new A3WorkshopWindow(instance);
-		} else {
-			steamCMDConsole.append("Workshop directory is empty!\n");
-			String s = JOptionPane.showInputDialog(null, "Enter A Valid Workshop Directory ( 'Arma 3/!Workshop' )", "Invalid Workshop Directory", JOptionPane.CLOSED_OPTION);
-			System.out.println(s);
-			if(s != null) {
-	    		WORKSHOP_MODS_DIR = s;
-	    		config.workshopDir = WORKSHOP_MODS_DIR;
-	    		config.save();
-	    		openWorkshop();
-			}
-		}
-	}
+	
 	
 	public void updateModParameter() {
 		String tMd = "-mod=\"";
@@ -257,8 +264,50 @@ public class A3ServerLauncher extends JFrame {
 			tMd += s.toString() + ";";
 		}
 		MODS_PARAM = tMd + "\"";
-		System.out.println(MODS_PARAM);
-		
-		
+		System.out.println(MODS_PARAM);	
+	}
+	
+	public void reloadModDir(ArrayList<ArmaMod> modList, String path) {
+		File[] fileList = new File(WORKSHOP_MODS_DIR).listFiles();
+		for(File f : fileList) {
+			if(f.getName().contains("@")) {
+				try {
+					JSONObject obj = ArmaCFGParser.parse(new File(f.getAbsolutePath() + File.separator + "mod.cpp"));
+					if(obj.get("name") != null) {
+						ArmaMod aMod = new ArmaMod(f.getName(), obj.get("name").toString());
+						if((getFileFolderSize(new File(f.getAbsolutePath() + File.separator)) / 1024f) / 1024f > 1024) {
+							aMod.fileSize = df.format((getFileFolderSize(new File(f.getAbsolutePath() + File.separator)) / 1024f) / 1024f / 1024f) + "GB";
+						} else {
+							aMod.fileSize = df.format((getFileFolderSize(new File(f.getAbsolutePath() + File.separator)) / 1024f) / 1024f) + "MB";
+						}
+						modList.add(aMod);
+					} else {
+						ArmaMod aMod = new ArmaMod(f.getName(), f.getName());
+						if((getFileFolderSize(new File(f.getAbsolutePath() + File.separator)) / 1024f) / 1024f > 1024) {
+							aMod.fileSize = df.format((getFileFolderSize(new File(f.getAbsolutePath() + File.separator)) / 1024f) / 1024f / 1024f) + "GB";
+						} else {
+							aMod.fileSize = df.format((getFileFolderSize(new File(f.getAbsolutePath() + File.separator)) / 1024f) / 1024f) + "MB";
+						}
+						modList.add(aMod);
+					}
+				} catch(Exception e) {}
+			}
+		}
+		//refreshModList();
+	}
+	
+	public static long getFileFolderSize(File dir) {
+		long size = 0;
+		if (dir.isDirectory()) {
+			for (File file : dir.listFiles()) {
+				if (file.isFile()) {
+					size += file.length();
+				} else
+					size += getFileFolderSize(file);
+			}
+		} else if (dir.isFile()) {
+			size += dir.length();
+		}
+		return size;
 	}
 }

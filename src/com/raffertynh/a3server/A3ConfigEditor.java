@@ -28,7 +28,7 @@ import org.json.simple.JSONObject;
 import java.awt.Color;
 import java.awt.Rectangle;
 
-public class A3ConfigEditor extends JFrame {
+public class A3ConfigEditor extends JFrame implements IArmaWindow {
 
 	private JPanel contentPane;
 	public JSONObject obj = new JSONObject();
@@ -111,6 +111,11 @@ public class A3ConfigEditor extends JFrame {
 			e.printStackTrace();
 		}
 	
+	}
+
+	@Override
+	public void onCacheLoaded() {
+		
 	}
 
 }

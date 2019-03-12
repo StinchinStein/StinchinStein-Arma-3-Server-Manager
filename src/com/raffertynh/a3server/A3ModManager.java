@@ -35,7 +35,7 @@ import org.json.simple.JSONObject;
 import com.raffertynh.renderer.ArmaMod;
 import com.raffertynh.renderer.InventoryRenderer;
 
-public class A3ModManager extends JFrame {
+public class A3ModManager extends JFrame implements IArmaWindow {
 
 	private JPanel contentPane;
 	public String winType;
@@ -195,7 +195,7 @@ public class A3ModManager extends JFrame {
 			JButton btnSteamWorkshop = new JButton("Steam Workshop");
 			btnSteamWorkshop.addActionListener(new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
-					new A3WorkshopWindow(parent);
+					openWorkshop();
 				}
 			});
 			btnSteamWorkshop.setBounds(116, 229, 113, 23);
@@ -215,8 +215,27 @@ public class A3ModManager extends JFrame {
 		}
 	
 	}
-	
-	
+
+	@Override
+	public void onCacheLoaded() {
+		
+	}
+	private void openWorkshop() {
+		if(parent.WORKSHOP_MODS_DIR.length() > 0) {
+			System.out.println("VISIB");
+			parent.winWorkshop.showWindow();
+		} else {
+			parent.steamCMDConsole.append("Workshop directory is empty!\n");
+			String s = JOptionPane.showInputDialog(null, "Enter A Valid Workshop Directory ( 'Arma 3/!Workshop' )", "Invalid Workshop Directory", JOptionPane.CLOSED_OPTION);
+			System.out.println(s);
+			if(s != null) {
+				parent.WORKSHOP_MODS_DIR = s;
+				parent.config.workshopDir = parent.WORKSHOP_MODS_DIR;
+				parent.config.save();
+	    		openWorkshop();
+			}
+		}
+	}
 	private void updateModel() {
 		//save current model to file and update it
 		/*parent.config.modsEnabled = parent.MODS_LIST;

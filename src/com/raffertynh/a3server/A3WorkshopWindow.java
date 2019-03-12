@@ -32,7 +32,7 @@ import org.json.simple.JSONObject;
 import com.raffertynh.renderer.ArmaMod;
 import com.raffertynh.renderer.InventoryRenderer;
 
-public class A3WorkshopWindow extends JFrame {
+public class A3WorkshopWindow extends JFrame implements IArmaWindow {
 
 	private JPanel contentPane;
 	private DefaultTableModel tblModel;
@@ -45,10 +45,6 @@ public class A3WorkshopWindow extends JFrame {
 	private JButton btnSaveVehicle;
 	private ArrayList<String> WORKSHOP_SELECTED = new ArrayList<String>();
 	private JTextField textField;
-	private DecimalFormat df = new DecimalFormat("#,###.#");
-	
-	private ArrayList<ArmaMod> CACHE = new ArrayList<ArmaMod>();
-	
 	
 	class CopyFilesThread extends Thread {
 		public void run() {
@@ -97,11 +93,11 @@ public class A3WorkshopWindow extends JFrame {
 					}*/
 					parent.steamCMDConsole.append("Removing old '" + mod + "'\n");
 					FileUtils.deleteDirectory(new File(parent.INSTALL_DIR + File.separator + mod + File.separator));
-					parent.steamCMDConsole.append("Copying " + mod + " - " + df.format((getFileFolderSize(modWorkshopFile) / 1024f) / 1024f) + "MB...\n");
+					parent.steamCMDConsole.append("Copying " + mod + " - " + parent.df.format((parent.getFileFolderSize(modWorkshopFile) / 1024f) / 1024f) + "MB...\n");
 					FileUtils.copyDirectory(new File(parent.WORKSHOP_MODS_DIR + File.separator + mod + File.separator), new File(parent.INSTALL_DIR + File.separator + mod + File.separator));
 					parent.steamCMDConsole.append("Finished " + mod + "!\n"); 
 				} else {
-					parent.steamCMDConsole.append("Copying " + mod + " - " + df.format((getFileFolderSize(modWorkshopFile) / 1024f) / 1024f) + "MB...\n");
+					parent.steamCMDConsole.append("Copying " + mod + " - " + parent.df.format((parent.getFileFolderSize(modWorkshopFile) / 1024f) / 1024f) + "MB...\n");
 					FileUtils.copyDirectory(new File(parent.WORKSHOP_MODS_DIR + File.separator + mod + File.separator), new File(parent.INSTALL_DIR + File.separator + mod + File.separator));
 					parent.steamCMDConsole.append("Finished " + mod + "!\n"); 
 				}
@@ -109,20 +105,7 @@ public class A3WorkshopWindow extends JFrame {
 		}
 	}
 	
-	public static long getFileFolderSize(File dir) {
-		long size = 0;
-		if (dir.isDirectory()) {
-			for (File file : dir.listFiles()) {
-				if (file.isFile()) {
-					size += file.length();
-				} else
-					size += getFileFolderSize(file);
-			}
-		} else if (dir.isFile()) {
-			size += dir.length();
-		}
-		return size;
-	}
+	
 	
 	public A3WorkshopWindow(final A3ServerLauncher parent) {
 		this.parent = parent;
@@ -212,7 +195,8 @@ public class A3WorkshopWindow extends JFrame {
 			JButton btnRefreshMods = new JButton("Refresh Mods");
 			btnRefreshMods.addActionListener(new ActionListener() {
 				public void actionPerformed(ActionEvent arg0) {
-					reloadModDir();
+					parent.reloadModDir(parent.CACHE_WORKSHOP, parent.WORKSHOP_MODS_DIR);
+					refreshModList();
 				}
 			});
 			btnRefreshMods.setBounds(480, 229, 100, 23);
@@ -269,11 +253,10 @@ public class A3WorkshopWindow extends JFrame {
 			
 			setLocationRelativeTo(null);
 			setResizable(false);
-			setVisible(true);
 
 			if(parent.WORKSHOP_MODS_DIR.length() > 0) {
-				//refreshModList();
-				reloadModDir();
+				//parent.reloadModDir(parent.CACHE_WORKSHOP, parent.WORKSHOP_MODS_DIR);
+				refreshModList();
 			}
 		} catch(Exception e) {
 			e.printStackTrace();
@@ -281,6 +264,17 @@ public class A3WorkshopWindow extends JFrame {
 	
 	}
 
+	
+	public void showWindow() {
+		setVisible(true);
+		refreshModList();
+	}
+	
+	@Override
+	public void onCacheLoaded() {
+		refreshModList();
+		//getModel().addElement(new ArmaMod("@modTest", "TEST HAHA"));
+	}
 	
 	private void updateModel() {
 		for(int i = 0; i < getModel().size(); i++) {
@@ -293,37 +287,10 @@ public class A3WorkshopWindow extends JFrame {
 		list.repaint();
 	}
 	
-	public void reloadModDir() {
-		File[] fileList = new File(parent.WORKSHOP_MODS_DIR).listFiles();
-		for(File f : fileList) {
-			if(f.getName().contains("@")) {
-				try {
-					JSONObject obj = ArmaCFGParser.parse(new File(f.getAbsolutePath() + File.separator + "mod.cpp"));
-					if(obj.get("name") != null) {
-						ArmaMod aMod = new ArmaMod(f.getName(), obj.get("name").toString());
-						if((getFileFolderSize(new File(f.getAbsolutePath() + File.separator)) / 1024f) / 1024f > 1024) {
-							aMod.fileSize = df.format((getFileFolderSize(new File(f.getAbsolutePath() + File.separator)) / 1024f) / 1024f / 1024f) + "GB";
-						} else {
-							aMod.fileSize = df.format((getFileFolderSize(new File(f.getAbsolutePath() + File.separator)) / 1024f) / 1024f) + "MB";
-						}
-						CACHE.add(aMod);
-					} else {
-						ArmaMod aMod = new ArmaMod(f.getName(), f.getName());
-						if((getFileFolderSize(new File(f.getAbsolutePath() + File.separator)) / 1024f) / 1024f > 1024) {
-							aMod.fileSize = df.format((getFileFolderSize(new File(f.getAbsolutePath() + File.separator)) / 1024f) / 1024f / 1024f) + "GB";
-						} else {
-							aMod.fileSize = df.format((getFileFolderSize(new File(f.getAbsolutePath() + File.separator)) / 1024f) / 1024f) + "MB";
-						}
-						CACHE.add(aMod);
-					}
-				} catch(Exception e) {}
-			}
-		}
-		refreshModList();
-	}
+	
 	private void refreshModList(String filter) {
 		getModel().clear();
-		for(ArmaMod mod: CACHE) {
+		for(ArmaMod mod: parent.CACHE_WORKSHOP) {
 			if(mod.folderName.toLowerCase().contains(filter.toLowerCase())) {
 				getModel().addElement(mod);
 			}
@@ -331,6 +298,7 @@ public class A3WorkshopWindow extends JFrame {
 		
 		
 		list.setModel(getModel());
+		list.repaint();
 		//.setText("Mods (" + getModel().size() + " total | " + modList.size() + " enabled)");
 	}
 	private void refreshModList() {
